@@ -1,0 +1,973 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://ntfy.sh; img-src 'self' data: blob: https://ntfy.sh; manifest-src 'self' blob:; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#141922">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kancelář">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Kancelář botů</title>
+<style>
+:root{--g-work:#34d058;--g-done:#17a34a;--g-wait:#f5b301;--g-err:#ef4444;--g-rest:#94a3b8;--ink:#eef1f6;--mut:#a3adbd}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;overflow:hidden;font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:radial-gradient(1200px 800px at 50% 30%,#f9fbfe 0%,#e8edf4 60%,#d9e0ea 100%)}
+#app{position:fixed;inset:0}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+#bubbles{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.glass{position:fixed;background:rgba(20,25,34,.62);-webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);border:1px solid rgba(255,255,255,.14);border-radius:16px;box-shadow:0 8px 32px rgba(10,14,22,.28);color:var(--ink)}
+.bub{position:absolute;left:0;top:0;transform:translate(-50%,-100%);pointer-events:auto;cursor:pointer;background:#fff;color:#1c2330;border:2px solid var(--g-rest);border-radius:12px;padding:3px 8px 4px;max-width:150px;box-shadow:0 3px 10px rgba(30,40,60,.22);font-size:11px;line-height:1.25;will-change:transform;display:none}
+.bub::after{content:"";position:absolute;left:50%;bottom:-7px;margin-left:-6px;border:6px solid transparent;border-top-color:inherit;border-bottom:0}
+.bub b{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bub span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;color:#4b5565}
+.bub.sel{z-index:5;max-width:230px}.bub.sel span{-webkit-line-clamp:5}
+.bub.rest{opacity:.62}
+.bub.need{animation:bp 1.2s ease-in-out infinite}
+@keyframes bp{50%{box-shadow:0 0 0 6px rgba(245,179,1,.4),0 3px 10px rgba(30,40,60,.22)}}
+.bub i{position:absolute;right:-6px;top:-8px;background:#6d5bd0;color:#fff;font:700 9px/1 system-ui;padding:3px 5px;border-radius:99px;font-style:normal;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+#pill{top:14px;left:50%;transform:translateX(-50%);padding:9px 20px;border-radius:99px;display:flex;gap:10px;align-items:center;white-space:nowrap;font-weight:600}
+#pill .sep{color:#69758a}
+#pill .w{color:#6ee58a}#pill .n{color:#ffd24d}#pill .r{color:#b4bdcb}#pill .d{color:#7fd9a1}
+#conn{font-size:11px;font-weight:500;color:var(--mut)}
+#conn::before,#dotm::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--g-rest);margin-right:6px}
+#conn.ok::before,#dotm.ok::before{background:var(--g-work);box-shadow:0 0 8px var(--g-work)}
+#conn.bad::before,#dotm.bad::before{background:var(--g-err)}
+#left{left:14px;top:14px;width:268px;max-height:calc(100% - 28px - 30vh - 12px);overflow:auto;padding:12px}
+#left h1{font-size:15px;margin:0 0 2px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+h4{margin:12px 0 6px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:700}
+.fl{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;margin-bottom:5px;border-radius:11px;background:rgba(255,255,255,.06);border:1px solid transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.fl:hover{background:rgba(255,255,255,.12)}
+.fl.on{background:rgba(255,255,255,.17);border-color:rgba(255,255,255,.35)}
+.fl .dot{width:10px;height:10px;border-radius:50%;flex:none;background:var(--g-rest)}
+.fl .t{flex:1;font-weight:650}
+.fl small{color:var(--mut)}.fl .warn{color:#ffd24d;font-weight:700}
+.acc{margin-bottom:4px;border-radius:10px;background:rgba(255,255,255,.05)}
+.acc>button{display:flex;width:100%;align-items:center;gap:8px;background:none;border:0;color:inherit;font:inherit;font-weight:650;padding:8px 10px;cursor:pointer;text-align:left}
+.acc>button .c{margin-left:auto;background:rgba(255,255,255,.14);border-radius:99px;padding:0 8px;font-size:11px}
+.acc>button::before{content:"▸";color:var(--mut);transition:transform .15s}
+.acc.open>button::before{transform:rotate(90deg)}
+.acc .body{display:none;padding:0 6px 6px}.acc.open .body{display:block}
+.mini{display:flex;gap:8px;align-items:center;padding:5px 6px;border-radius:8px;cursor:pointer}
+.mini:hover{background:rgba(255,255,255,.1)}
+.mini .sw{width:9px;height:9px;border-radius:50%;flex:none}
+.mini span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}.mini small{color:var(--mut);flex:none}
+.none{color:var(--mut);padding:4px 6px;font-size:12px}
+#feedbox{left:14px;bottom:14px;width:268px;height:30vh;display:flex;flex-direction:column;padding:10px 12px}
+#feedbox h4{margin:0 0 6px}
+#feed3{overflow:auto;flex:1}
+.ev{display:flex;gap:7px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.07);cursor:pointer;font-size:12px}
+.ev:last-child{border:0}
+.ev time{color:var(--mut);flex:none;font-variant-numeric:tabular-nums}
+.ev .sw{width:8px;height:8px;border-radius:50%;margin-top:5px;flex:none}
+.ev div{word-break:break-word;min-width:0}.ev b{font-weight:650}
+#right{right:14px;top:14px;width:292px;max-height:calc(100% - 28px - 76px - 12px);overflow:hidden;display:flex;flex-direction:column}
+body.hasdetail #right{max-height:calc(100% - 28px - 345px - 24px)}
+#rhead{padding:11px 14px;font-weight:700;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,var(--hc,#64748b),rgba(255,255,255,0));color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+#rhead small{font-weight:500;opacity:.92}
+#floortabs{display:none;gap:6px;overflow-x:auto;padding:8px 10px 0}
+#floortabs button{flex:none;background:rgba(255,255,255,.1);border:1px solid transparent;color:inherit;border-radius:99px;padding:4px 12px;font:inherit;cursor:pointer}
+#floortabs button.on{background:rgba(255,255,255,.25);border-color:rgba(255,255,255,.4)}
+#rlist{overflow:auto;padding:8px;flex:1}
+.rb{display:flex;gap:10px;align-items:center;padding:8px;border-radius:12px;cursor:pointer;margin-bottom:4px;border:1px solid transparent}
+.rb:hover{background:rgba(255,255,255,.09)}.rb.on{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.3)}
+.av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;font-size:17px;color:#fff;position:relative}
+.av::after{content:"";position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;background:var(--sc,#94a3b8);border:2px solid #232a37}
+.rb .tx{min-width:0;flex:1}.rb .nm{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rb .ln{color:var(--mut);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{display:inline-block;background:#6d5bd0;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;margin-left:5px;vertical-align:1px}
+#detail{right:14px;bottom:76px;width:292px;padding:14px;max-height:calc(100% - 100px)}
+#detail[hidden]{display:none}
+#detail .hd{display:flex;gap:10px;align-items:center}
+#detail .x{margin-left:auto;background:rgba(255,255,255,.1);border:0;color:inherit;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px}
+#detail h3{margin:0;font-size:15px}
+.chip{display:inline-block;padding:1px 9px;border-radius:99px;font-size:11px;font-weight:700;color:#10151d;background:var(--sc,#94a3b8)}
+.kv{margin-top:9px;color:var(--mut)}.kv b{color:var(--ink);font-weight:600}
+.task{margin-top:6px;padding:8px 10px;background:rgba(255,255,255,.07);border-radius:10px;word-break:break-word;max-height:90px;overflow:auto}
+.met{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:9px}
+.met div{background:rgba(255,255,255,.07);border-radius:10px;padding:6px 8px;text-align:center}
+.met b{display:block;font-size:16px}.met small{color:var(--mut);font-size:10px}
+.btn{display:block;width:100%;text-align:center;margin-top:8px;padding:8px 10px;border-radius:11px;background:#3b82f6;color:#fff;text-decoration:none;font:inherit;font-weight:650;border:0;cursor:pointer}
+.btn:hover{filter:brightness(1.12)}
+.btn.alt{background:rgba(255,255,255,.14)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn.rep{background:#6d5bd0}
+.wait{margin-top:8px;text-align:center;color:#ffd24d;font-weight:600}
+.wait::before{content:"";display:inline-block;width:9px;height:9px;border:2px solid #ffd24d;border-right-color:transparent;border-radius:50%;margin-right:7px;animation:sp 1s linear infinite;vertical-align:-1px}
+@keyframes sp{to{transform:rotate(360deg)}}
+#ctl{right:14px;bottom:14px;display:flex;gap:4px;padding:5px;border-radius:14px}
+#ctl button{width:38px;height:38px;border:0;border-radius:10px;background:rgba(255,255,255,.08);color:inherit;font-size:18px;cursor:pointer}
+#ctl button:hover{background:rgba(255,255,255,.2)}
+#hint{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);color:#5f6b7d;font-size:11px;pointer-events:none;white-space:nowrap}
+#loading{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);color:#5f6b7d;font-size:15px;pointer-events:none}
+#dotm{display:none;position:fixed;left:12px;top:10px;color:#566178;font-size:11px}
+#modal{position:fixed;inset:0;background:rgba(10,14,22,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+#modal.on{display:flex}
+#modal .box{position:relative;width:min(820px,100%);max-height:88vh;overflow:auto;padding:22px 26px;background:rgba(20,25,34,.88)}
+#modal .box.glass{position:relative}
+#modal .close{position:sticky;float:right;top:0;background:rgba(255,255,255,.14);border:0;color:inherit;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:15px}
+.md h1,.md h2,.md h3,.md h4{margin:16px 0 6px;line-height:1.25;color:#fff;letter-spacing:0;text-transform:none;font-size:inherit}
+.md h1{font-size:21px}.md h2{font-size:17px;border-bottom:1px solid rgba(255,255,255,.14);padding-bottom:3px}.md h3{font-size:14.5px}
+.md p{margin:6px 0}.md ul,.md ol{margin:6px 0;padding-left:22px}
+.md code{background:rgba(255,255,255,.12);padding:1px 5px;border-radius:5px;font:12px ui-monospace,Consolas,monospace}
+.md pre{background:rgba(0,0,0,.35);padding:10px 12px;border-radius:10px;overflow:auto}.md pre code{background:none;padding:0}
+.md table{border-collapse:collapse;margin:8px 0;font-size:12.5px}.md td,.md th{border:1px solid rgba(255,255,255,.18);padding:4px 9px}.md th{background:rgba(255,255,255,.08)}
+.md blockquote{margin:8px 0;padding:2px 12px;border-left:3px solid #6d5bd0;color:#c4ccda}
+.md hr{border:0;border-top:1px solid rgba(255,255,255,.18);margin:12px 0}
+.mdmeta{color:var(--mut);font-size:12px;margin-bottom:8px}
+@media(max-width:699px){
+ #left,#feedbox,#pill,#hint{display:none}
+ #dotm{display:block}
+ #right{left:8px;right:8px;bottom:8px;top:auto;width:auto;max-height:40vh}
+ body.hasdetail #right{max-height:40vh}
+ #floortabs{display:flex}
+ #rlist{display:flex;flex-direction:row;gap:8px;overflow-x:auto;overflow-y:hidden}
+ .rb{min-width:210px;margin:0;background:rgba(255,255,255,.06)}
+ #detail{left:8px;right:8px;top:8px;bottom:auto;width:auto;max-height:46vh;overflow:auto}
+ #ctl{right:8px;bottom:auto;top:50%;transform:translateY(-50%);flex-direction:column}
+ #ctl button{width:34px;height:34px}
+ #modal .box{padding:16px}
+ .bub{max-width:90px;padding:3px 6px}.bub span{display:none}.bub.sel span{display:-webkit-box}.bub i{display:none}
+}
+/* ---- 2D záloha ---- */
+#fb{display:none;--bg:#f4f5f7;--card:#fff;--fg:#1c2128;--mut2:#6b7380;--bd:#d8dce2;--start:#2f81f7;--done:#2da44e;--stuck:#d97706;--need:#e5484d;--idle:#8b94a3;background:var(--bg);color:var(--fg);min-height:100%}
+@media(prefers-color-scheme:dark){#fb{--bg:#0f1318;--card:#171c23;--fg:#e6e9ee;--mut2:#8a93a1;--bd:#2a313b}}
+body.fb{overflow:auto;background:#f4f5f7}body.fb #app{display:none}body.fb #fb{display:block}
+#fb header{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--bg);z-index:5}
+#fb header h1{font-size:18px;margin:0;flex:1}
+#fb #conn2{font-size:12px;color:var(--mut2)}
+#fb #banner{display:none;margin:12px 18px 0;padding:10px 14px;border-radius:8px;background:var(--need);color:#fff;font-weight:600}
+#fb main{display:grid;grid-template-columns:1fr 330px;gap:18px;padding:18px}
+@media(max-width:900px){#fb main{grid-template-columns:1fr}}
+#fb .floor{margin-bottom:22px}
+#fb .floor h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut2);margin:0 0 8px;border-bottom:1px dashed var(--bd);padding-bottom:4px}
+#fb .desks{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+#fb .desk{background:var(--card);border:1px solid var(--bd);border-left:5px solid var(--idle);border-radius:10px;padding:10px 12px}
+#fb .desk.start{border-left-color:var(--start)}#fb .desk.done{border-left-color:var(--done)}#fb .desk.stuck{border-left-color:var(--stuck)}#fb .desk.need{border-left-color:var(--need)}
+#fb .top{display:flex;gap:10px;align-items:center}
+#fb .av2{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex:none}
+#fb .nm{font-weight:650}#fb .role{color:var(--mut2);font-size:12px}
+#fb .st{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px;color:#fff;background:var(--idle);margin-top:6px}
+#fb .st.start{background:var(--start)}#fb .st.done{background:var(--done)}#fb .st.stuck{background:var(--stuck)}#fb .st.need{background:var(--need)}
+#fb .last{margin-top:6px;word-break:break-word}#fb .when{color:var(--mut2);font-size:12px}
+#fb .meta{display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:var(--mut2)}
+#fb a{color:var(--start)}
+#fb aside{position:sticky;top:64px;align-self:start;max-height:calc(100vh - 84px);overflow:auto;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px}
+#fb aside h2{font-size:13px;margin:0 0 8px;color:var(--mut2);text-transform:uppercase}
+#fb .ev2{padding:6px 0;border-bottom:1px solid var(--bd);font-size:13px;word-break:break-word}
+#fb .empty{color:var(--mut2)}
+</style>
+</head>
+<body>
+<div id="app">
+<canvas id="gl" tabindex="0"></canvas>
+<div id="bubbles"></div>
+<div id="dotm">živě</div>
+<div id="pill" class="glass"></div>
+<aside id="left" class="glass"><h1><span>🏢 Kancelář botů</span><span id="conn">připojuji…</span></h1>
+<h4>Patra</h4><div id="floors3"></div><div id="accs"></div></aside>
+<section id="feedbox" class="glass"><h4>Živý přehled</h4><div id="feed3"></div></section>
+<aside id="right" class="glass"><div id="rhead"></div><div id="floortabs"></div><div id="rlist"></div></aside>
+<section id="detail" class="glass" hidden></section>
+<div id="ctl" class="glass"><button id="b-l" title="Otočit doleva (Q)">⟲</button><button id="b-r" title="Otočit doprava (E)">⟳</button><button id="b-p" title="Přiblížit">+</button><button id="b-m" title="Oddálit">−</button><button id="b-h" title="Celé patro">⌂</button></div>
+<div id="hint">Q / E otočit · kolečko = zoom · tažení = posun · ↑ ↓ patra</div>
+<div id="loading">Načítám 3D kancelář…</div>
+</div>
+<div id="modal"><div class="box glass"><button class="close" id="mclose" title="Zavřít">✕</button><div id="mbody" class="md"></div></div></div>
+<div id="fb"><header><h1>🏢 Kancelář botů <small style="font-weight:400;color:var(--mut2)">(2D záloha, 3D se nenačetlo)</small></h1><span id="conn2">připojuji…</span></header>
+<div id="banner"></div>
+<main><section id="fb-floors"><p class="empty">Čekám na roster…</p></section>
+<aside><h2>Živý přehled</h2><div id="fb-feed"><p class="empty">Zatím nic.</p></div></aside></main></div>
+<script>
+(function(){
+"use strict";
+var TOPIC=(function(){
+  var K="kancelar_topic",OK=/^[A-Za-z0-9_-]{8,64}$/,t="";
+  try{var m=/[#&]t=([^&]+)/.exec(location.hash||"");if(m){var c=decodeURIComponent(m[1]);if(OK.test(c)){t=c;try{localStorage.setItem(K,c);}catch(e){}}}}catch(e){}
+  if(!t){try{var s=localStorage.getItem(K)||"";if(OK.test(s))t=s;}catch(e){}}
+  if(t&&location.hash){try{history.replaceState(null,"",location.pathname+location.search);}catch(e){}}
+  if(t){try{var mf={name:"Kancelář botů",short_name:"Kancelář",display:"standalone",background_color:"#141922",theme_color:"#141922",start_url:location.origin+location.pathname+"#t="+t,scope:location.origin+location.pathname.replace(/[^\/]*$/,""),icons:[{src:new URL("icon-192.png",location.href).href,sizes:"192x192",type:"image/png"},{src:new URL("icon-512.png",location.href).href,sizes:"512x512",type:"image/png",purpose:"any maskable"}]};
+    var l=document.querySelector('link[rel=manifest]');if(l)l.href=URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:"application/manifest+json"}));}catch(e){}}
+  return t;
+})();
+var BASE="https://ntfy.sh/"+TOPIC;
+if(!TOPIC){
+  var nb=document.createElement("div");
+  nb.style.cssText="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;background:#141922;color:#eef1f6;font:16px system-ui,sans-serif;z-index:99999";
+  nb.innerHTML='<div style="font-size:42px">🏢</div><div>Otevři kancelář přes svůj soukromý odkaz.</div>';
+  document.body.appendChild(nb);
+  return;
+}
+(function(){
+  var b=document.createElement("button");b.id="forgetbtn";b.textContent="⚙";b.title="Nastavení";
+  b.style.cssText="position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:9000;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(20,25,34,.6);color:#eef1f6;font-size:16px;cursor:pointer;opacity:.55";
+  var p=document.createElement("div");
+  p.style.cssText="position:fixed;left:50%;bottom:52px;transform:translateX(-50%);z-index:9001;display:none;padding:12px 14px;border-radius:14px;background:rgba(20,25,34,.92);border:1px solid rgba(255,255,255,.18);color:#eef1f6;font:13px system-ui,sans-serif;text-align:center;max-width:280px";
+  p.innerHTML='<div style="margin-bottom:8px">Na tomto zařízení zapomene soukromý kanál. Znovu ho otevřeš jen přes svůj soukromý odkaz.</div><button id="forgetgo" style="padding:7px 12px;border-radius:9px;border:0;background:#ef4444;color:#fff;font-weight:600;cursor:pointer">Zapomenout kanál</button>';
+  document.body.appendChild(b);document.body.appendChild(p);
+  b.onclick=function(){p.style.display=p.style.display==="none"?"block":"none";};
+  p.querySelector("#forgetgo").onclick=function(){
+    try{localStorage.clear();sessionStorage.clear();}catch(e){}
+    var jobs=[];
+    try{if(window.caches)jobs.push(caches.keys().then(function(k){return Promise.all(k.map(function(x){return caches.delete(x);}));}));}catch(e){}
+    try{if(navigator.serviceWorker)jobs.push(navigator.serviceWorker.getRegistrations().then(function(r){return Promise.all(r.map(function(x){return x.unregister();}));}));}catch(e){}
+    Promise.all(jobs).catch(function(){}).then(function(){location.replace(location.pathname);});
+  };
+})();
+var THREE_URL="https://unpkg.com/three@0.160.0/build/three.module.js";
+var EVENTS={start:"Začal",done:"Hotovo",stuck:"Zasekl se",need:"Potřebuje tě"};
+var state={roster:{},rosterOrder:[],bots:{},feed:[],seen:{},counts:{},reports:{},requests:{}};
+var NEWFLOOR="Noví";
+var IGNORE={"Nový Bot":1};
+var ERR_RE=/chyb|error|fail|selhal|pád|crash/i;
+var REST_MS=2*3600*1000;
+
+function parseMsg(m){
+  if(!m||m.event!=="message"||!m.id)return null;
+  var tags=m.tags||[];
+  if(tags.indexOf("roster")>=0){
+    try{var arr=JSON.parse(m.message);if(Array.isArray(arr))return{kind:"roster",time:m.time,id:m.id,roster:arr};}catch(e){}
+    return null;
+  }
+  if(tags.indexOf("report-request")>=0){
+    try{var q=JSON.parse(m.message);if(q&&q.bot)return{kind:"request",time:m.time,id:m.id,bot:String(q.bot),botId:q.id?String(q.id):""};}catch(e){}
+    return null;
+  }
+  if(tags.indexOf("report")>=0){
+    if(!m.title||IGNORE[m.title])return null;
+    var a=m.attachment||{};
+    return{kind:"report",time:m.time,id:m.id,bot:m.title,url:typeof a.url==="string"?a.url:"",name:a.name||"report.md",size:a.size||0,expires:a.expires||0};
+  }
+  var ev=null;for(var i=0;i<tags.length;i++){if(EVENTS[tags[i]]){ev=tags[i];break;}}
+  if(!ev)return null;
+  if(IGNORE[m.title])return null;
+  return{kind:"event",time:m.time,id:m.id,bot:m.title||"?",ev:ev,text:m.message||""};
+}
+function apply(p){
+  if(!p||state.seen[p.id])return false;
+  state.seen[p.id]=1;
+  if(p.kind==="roster"){
+    if(state.rosterTime&&p.time<state.rosterTime)return false;
+    state.rosterTime=p.time;state.roster={};state.rosterOrder=[];
+    p.roster.forEach(function(b){if(b&&b.name){state.roster[b.name]=b;state.rosterOrder.push(b.name);}});
+    return true;
+  }
+  if(p.kind==="request"){var r0=state.requests[p.bot];if(!r0||p.time>=r0.time)state.requests[p.bot]={time:p.time};return true;}
+  if(p.kind==="report"){var o=state.reports[p.bot];if(!o||p.time>=o.time)state.reports[p.bot]={time:p.time,url:p.url,name:p.name,size:p.size,expires:p.expires};return true;}
+  var c=state.counts[p.bot]||(state.counts[p.bot]={start:0,done:0,stuck:0,need:0});c[p.ev]++;
+  var b=state.bots[p.bot];
+  if(!b||p.time>=b.time)state.bots[p.bot]={ev:p.ev,text:p.text,time:p.time};
+  state.feed.push(p);state.feed.sort(function(a,c2){return c2.time-a.time;});
+  if(state.feed.length>150)state.feed.length=150;
+  return true;
+}
+function groupFloors(){
+  var floors={},order=[];
+  function add(f,name){if(!floors[f]){floors[f]=[];order.push(f);}floors[f].push(name);}
+  state.rosterOrder.forEach(function(n){add(state.roster[n].team||NEWFLOOR,n);});
+  Object.keys(state.bots).forEach(function(n){if(!state.roster[n])add(NEWFLOOR,n);});
+  order.forEach(function(f){floors[f].sort(function(a,b){return ((state.roster[b]||{}).lead?1:0)-((state.roster[a]||{}).lead?1:0);});});
+  return{floors:floors,order:order};
+}
+function fmtTime(t){
+  try{return new Date(t*1000).toLocaleString("cs-CZ",{timeZone:"Europe/Prague",day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit"});}
+  catch(e){return String(t);}
+}
+function fmtHM(t){
+  try{return new Date(t*1000).toLocaleTimeString("cs-CZ",{timeZone:"Europe/Prague",hour:"2-digit",minute:"2-digit",second:"2-digit"});}
+  catch(e){return String(t);}
+}
+function statusOf(n){
+  var s=state.bots[n];if(!s)return"rest";
+  if(s.ev==="need")return"need";
+  if(s.ev==="stuck")return ERR_RE.test(s.text)?"error":"stuck";
+  if(Date.now()-s.time*1000>REST_MS)return"rest";
+  return s.ev==="start"?"working":"done";
+}
+function waitingReport(n){var q=state.requests[n];if(!q)return false;var r=state.reports[n];return !r||r.time<q.time;}
+function pendingReq(){
+  // pomocná funkce pro testy: požadavky bez novějšího reportu
+  return Object.keys(state.requests).filter(waitingReport);
+}
+if(typeof window==="undefined"){globalThis.__core={parseMsg:parseMsg,apply:apply,groupFloors:groupFloors,state:state,fmtTime:fmtTime,statusOf:statusOf,pendingReq:pendingReq};return;}
+
+/* ================= společné UI ================= */
+var ST={working:{c:"#34d058",l:"Pracuje"},done:{c:"#17a34a",l:"Hotovo"},need:{c:"#f5b301",l:"Čeká na tebe"},stuck:{c:"#f5b301",l:"Zasekl se"},error:{c:"#ef4444",l:"Chyba"},rest:{c:"#94a3b8",l:"Odpočívá"}};
+var sel={floor:null,bot:null};
+var scene3d=null;
+var accOpen={need:true,done:false,rest:false};
+var layoutInfo={};   // jméno -> {floor, desk}
+var $=function(id){return document.getElementById(id);};
+function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+function usageText(u){if(u==null||u==="")return"";if(typeof u==="object")return Object.keys(u).map(function(k){return k+": "+u[k];}).join(", ");return String(u);}
+function safeLink(l){return typeof l==="string"&&/^grokbot:\/\/[A-Za-z0-9\/_.?=&-]+$/.test(l);}
+function safeUrl(u){return typeof u==="string"&&/^https:\/\/ntfy\.sh\/[A-Za-z0-9._\/-]+$/.test(u);}
+function agoText(t){
+  var s=Math.max(0,Math.round(Date.now()/1000-t));
+  if(s<45)return"právě teď";if(s<3600)return"před "+Math.round(s/60)+" min";
+  if(s<86400)return"před "+Math.floor(s/3600)+" h "+Math.round((s%3600)/60)+" min";return"před "+Math.floor(s/86400)+" d";
+}
+function floorStatus(names){
+  var w=0,n=0,e=0;names.forEach(function(x){var s=statusOf(x);if(s==="working")w++;else if(s==="need"||s==="stuck")n++;else if(s==="error")e++;});
+  if(e)return"error";if(n)return"need";if(w)return"working";return"rest";
+}
+function curFloors(){var g=groupFloors();if(!g.order.length)return g;if(!sel.floor||!g.floors[sel.floor])sel.floor=g.order[0];return g;}
+
+function selectFloor(name){sel.floor=name;sel.bot=null;renderUI();if(scene3d)scene3d.focus();}
+function selectBot(name){
+  if(!name)return;
+  var g=groupFloors();
+  for(var i=0;i<g.order.length;i++)if(g.floors[g.order[i]].indexOf(name)>=0)sel.floor=g.order[i];
+  sel.bot=name;renderUI();if(scene3d)scene3d.focus();
+}
+function deselect(){if(!sel.bot)return;sel.bot=null;renderUI();if(scene3d)scene3d.focus();}
+
+function publishRequest(name){
+  var r=state.roster[name]||{};
+  var body=JSON.stringify({bot:name,id:r.id||"",ts:Math.round(Date.now()/1000)});
+  state.requests[name]={time:Math.round(Date.now()/1000)+1};
+  renderUI();
+  return fetch(BASE,{method:"POST",headers:{"Title":"office","Tags":"report-request"},body:body}).then(function(res){
+    if(!res.ok)throw new Error("HTTP "+res.status);
+  }).catch(function(){delete state.requests[name];renderUI();setConn(false,"žádost o report se nepodařilo odeslat");});
+}
+
+/* --- jednoduchý markdown renderer (vše přes textContent) --- */
+function mdInline(parent,text){
+  var re=/(`[^`]+`)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*\s][^*]*\*)/g,last=0,m;
+  while((m=re.exec(text))){
+    if(m.index>last)parent.appendChild(document.createTextNode(text.slice(last,m.index)));
+    var t=m[0],n;
+    if(m[1]){n=el("code",null,t.slice(1,-1));}
+    else if(m[2]||m[3]){n=el("strong",null,t.slice(2,-2));}
+    else{n=el("em",null,t.slice(1,-1));}
+    parent.appendChild(n);last=m.index+t.length;
+  }
+  if(last<text.length)parent.appendChild(document.createTextNode(text.slice(last)));
+}
+function mdRender(src){
+  var root=document.createDocumentFragment(),lines=String(src).replace(/\r/g,"").split("\n"),i=0;
+  function isTbl(l){return /^\s*\|.*\|\s*$/.test(l);}
+  while(i<lines.length){
+    var l=lines[i],m;
+    if(/^\s*```/.test(l)){var buf=[];i++;while(i<lines.length&&!/^\s*```/.test(lines[i])){buf.push(lines[i]);i++;}i++;var pre=el("pre");pre.appendChild(el("code",null,buf.join("\n")));root.appendChild(pre);continue;}
+    if(!l.trim()){i++;continue;}
+    if((m=/^(#{1,4})\s+(.*)$/.exec(l))){var h=el("h"+m[1].length);mdInline(h,m[2]);root.appendChild(h);i++;continue;}
+    if(/^\s*([-*_])\s*\1\s*\1[\s\-*_]*$/.test(l)){root.appendChild(el("hr"));i++;continue;}
+    if(isTbl(l)&&i+1<lines.length&&/^\s*\|[\s:|-]+\|\s*$/.test(lines[i+1])){
+      var tb=el("table"),cells=function(s){return s.trim().replace(/^\||\|$/g,"").split("|");};
+      var tr=el("tr");cells(l).forEach(function(c){var th=el("th");mdInline(th,c.trim());tr.appendChild(th);});tb.appendChild(tr);i+=2;
+      while(i<lines.length&&isTbl(lines[i])){tr=el("tr");cells(lines[i]).forEach(function(c){var td=el("td");mdInline(td,c.trim());tr.appendChild(td);});tb.appendChild(tr);i++;}
+      root.appendChild(tb);continue;
+    }
+    if(/^\s*>/.test(l)){var q=[];while(i<lines.length&&/^\s*>/.test(lines[i])){q.push(lines[i].replace(/^\s*>\s?/,""));i++;}var bq=el("blockquote");mdInline(bq,q.join(" "));root.appendChild(bq);continue;}
+    if(/^\s*([-*+]|\d+[.)])\s+/.test(l)){
+      var ord=/^\s*\d/.test(l),ul=el(ord?"ol":"ul");
+      while(i<lines.length&&/^\s*([-*+]|\d+[.)])\s+/.test(lines[i])){var li=el("li");mdInline(li,lines[i].replace(/^\s*([-*+]|\d+[.)])\s+/,""));ul.appendChild(li);i++;}
+      root.appendChild(ul);continue;
+    }
+    var par=[];while(i<lines.length&&lines[i].trim()&&!/^(\s*```|#{1,4}\s|\s*>|\s*([-*+]|\d+[.)])\s+)/.test(lines[i])&&!isTbl(lines[i])){par.push(lines[i]);i++;}
+    if(!par.length){par.push(lines[i]);i++;}
+    var p=el("p");mdInline(p,par.join(" "));root.appendChild(p);
+  }
+  return root;
+}
+function showReport(name){
+  var r=state.reports[name];if(!r)return;
+  var body=$("mbody");body.textContent="";
+  body.appendChild(el("div","mdmeta","Report: "+name+" · "+fmtTime(r.time)+" (Praha)"));
+  var holder=el("div",null,"Načítám report…");body.appendChild(holder);
+  $("modal").className="on";
+  if(!safeUrl(r.url)){holder.textContent="Report vypršel (příloha už není dostupná).";return;}
+  fetch(r.url).then(function(res){if(!res.ok)throw new Error("HTTP "+res.status);return res.text();}).then(function(t){
+    holder.textContent="";holder.appendChild(mdRender(t.slice(0,300000)));
+  }).catch(function(){holder.textContent="Report vypršel (příloha už není dostupná). Vyžádej nový.";});
+}
+function closeModal(){$("modal").className="";}
+
+function dotColor(n){return ST[statusOf(n)].c;}
+
+function renderUI(){
+  var g=curFloors();
+  var cnt={working:0,done:0,wait:0,rest:0};
+  var lists={need:[],done:[],rest:[]};
+  g.order.forEach(function(f){g.floors[f].forEach(function(n){
+    var s=statusOf(n);
+    if(s==="working")cnt.working++;else if(s==="done"){cnt.done++;lists.done.push(n);}
+    else if(s==="rest"){cnt.rest++;lists.rest.push(n);}else{cnt.wait++;lists.need.push(n);}
+  });});
+  var needN=lists.need.length;
+  document.title=(needN?"("+needN+") ":"")+"Kancelář botů";
+  document.body.classList.toggle("hasdetail",!!sel.bot);
+  // pilulka
+  var pill=$("pill");pill.textContent="";
+  [["w",cnt.working+" pracuje"],["n",cnt.wait+" čeká na tebe"],["r",cnt.rest+" odpočívá"]].forEach(function(x,i){
+    if(i)pill.appendChild(el("span","sep","·"));pill.appendChild(el("span",x[0],x[1]));});
+  if(cnt.done){pill.appendChild(el("span","sep","·"));pill.appendChild(el("span","d",cnt.done+" hotovo"));}
+  // levý panel
+  var leftEl=$("left"),sc=leftEl.scrollTop;
+  var fl=$("floors3");fl.textContent="";
+  g.order.forEach(function(f){
+    var names=g.floors[f],w=0,wt=0;names.forEach(function(n){var s=statusOf(n);if(s==="working")w++;if(s==="need"||s==="stuck"||s==="error")wt++;});
+    var b=el("button","fl"+(f===sel.floor?" on":""));
+    var d=el("span","dot");d.style.background=ST[floorStatus(names)].c;
+    b.appendChild(d);b.appendChild(el("span","t",f));
+    if(wt)b.appendChild(el("span","warn","⚠ "+wt));
+    b.appendChild(el("small",null,w+" pracuje · "+names.length));
+    b.onclick=function(){selectFloor(f);};fl.appendChild(b);
+  });
+  if(!g.order.length)fl.appendChild(el("div","none","Čekám na roster…"));
+  var acc=$("accs");acc.textContent="";
+  [["need","Čeká na mě"],["done","Hotovo"],["rest","Odpočívá"]].forEach(function(a){
+    var box=el("div","acc"+(accOpen[a[0]]?" open":""));
+    var hb=el("button");hb.appendChild(document.createTextNode(a[1]));hb.appendChild(el("span","c",String(lists[a[0]].length)));
+    hb.onclick=function(){accOpen[a[0]]=!accOpen[a[0]];box.classList.toggle("open");};
+    var body=el("div","body");
+    if(!lists[a[0]].length)body.appendChild(el("div","none","nikdo"));
+    lists[a[0]].forEach(function(n){
+      var m=el("div","mini");var sw=el("span","sw");sw.style.background=dotColor(n);
+      m.appendChild(sw);m.appendChild(el("span",null,n));
+      var s=state.bots[n];m.appendChild(el("small",null,s?fmtHM(s.time).slice(0,5):""));
+      m.onclick=function(){selectBot(n);};body.appendChild(m);
+    });
+    box.appendChild(hb);box.appendChild(body);acc.appendChild(box);
+  });
+  leftEl.scrollTop=sc;
+  // feed
+  var fd=$("feed3"),fs=fd.scrollTop;fd.textContent="";
+  if(!state.feed.length)fd.appendChild(el("div","none","Zatím nic."));
+  state.feed.slice(0,50).forEach(function(p){
+    var e=el("div","ev");e.appendChild(el("time",null,fmtHM(p.time)));
+    var sw=el("span","sw");sw.style.background=p.ev==="done"?ST.done.c:p.ev==="start"?ST.working.c:p.ev==="need"?ST.need.c:(ERR_RE.test(p.text)?ST.error.c:ST.stuck.c);e.appendChild(sw);
+    var d=el("div");d.appendChild(el("b",null,p.bot));d.appendChild(document.createTextNode(" · "+EVENTS[p.ev]+" — "+p.text));e.appendChild(d);
+    e.onclick=function(){selectBot(p.bot);};fd.appendChild(e);
+  });
+  fd.scrollTop=fs;
+  // pravý panel
+  var rh=$("rhead"),rl=$("rlist"),rs=rl.scrollLeft,rt=rl.scrollTop;rh.textContent="";rl.textContent="";
+  var ft=$("floortabs");ft.textContent="";
+  g.order.forEach(function(f){var b=el("button",f===sel.floor?"on":"",f);b.onclick=function(){selectFloor(f);};ft.appendChild(b);});
+  if(g.order.length){
+    var names=g.floors[sel.floor],fs2=floorStatus(names),wn=0;names.forEach(function(n){if(statusOf(n)==="working")wn++;});
+    rh.style.setProperty("--hc",ST[fs2].c);
+    rh.appendChild(el("span",null,"Patro: "+sel.floor));rh.appendChild(el("small",null,wn+" pracuje · "+names.length+" botů"));
+    names.forEach(function(n){
+      var r=state.roster[n]||{},look=r.look||{},s=state.bots[n],st=statusOf(n);
+      var row=el("div","rb"+(n===sel.bot?" on":""));
+      var av=el("div","av",look.emoji||look.initial||n.charAt(0).toUpperCase());av.style.background=/^#[0-9a-f]{6}$/i.test(look.color||"")?look.color:"#6b7380";av.style.setProperty("--sc",ST[st].c);
+      var tx=el("div","tx"),nm=el("div","nm",n);
+      if(state.reports[n])nm.appendChild(el("span","badge","Report"));
+      tx.appendChild(nm);
+      tx.appendChild(el("div","ln",ST[st].l+(s?" — "+s.text:(r.role?" · "+r.role:""))));
+      row.appendChild(av);row.appendChild(tx);row.onclick=function(){selectBot(n);};rl.appendChild(row);
+    });
+  }else rh.appendChild(el("span",null,"Čekám na roster…"));
+  rl.scrollLeft=rs;rl.scrollTop=rt;
+  renderDetail();
+  var dm=$("dotm");dm.textContent=needN?needN+" čeká na tebe":"živě";
+  if(scene3d)scene3d.sync(g);
+}
+function renderDetail(){
+  var d=$("detail");d.textContent="";
+  var n=sel.bot;
+  if(!n){d.hidden=true;return;}
+  d.hidden=false;
+  var r=state.roster[n]||{},look=r.look||{},s=state.bots[n],st=statusOf(n),c=state.counts[n]||{done:0,stuck:0,start:0,need:0};
+  var li=layoutInfo[n]||{};
+  var hd=el("div","hd");
+  var av=el("div","av",look.emoji||look.initial||n.charAt(0).toUpperCase());av.style.background=/^#[0-9a-f]{6}$/i.test(look.color||"")?look.color:"#6b7380";av.style.setProperty("--sc",ST[st].c);
+  var t=el("div");var h=el("h3",null,n+(r.lead?" ★":""));t.appendChild(h);
+  var chip=el("span","chip",ST[st].l);chip.style.setProperty("--sc",ST[st].c);t.appendChild(chip);
+  var x=el("button","x","✕");x.title="Zavřít";x.onclick=deselect;
+  hd.appendChild(av);hd.appendChild(t);hd.appendChild(x);d.appendChild(hd);
+  var kv=el("div","kv");kv.appendChild(document.createTextNode("Patro "));kv.appendChild(el("b",null,li.floor||sel.floor||"?"));
+  kv.appendChild(document.createTextNode(" · stůl "));kv.appendChild(el("b",null,li.desk?String(li.desk):"?"));
+  if(r.role){kv.appendChild(document.createElement("br"));kv.appendChild(document.createTextNode(r.role));}
+  d.appendChild(kv);
+  var task=el("div","task",s?s.text:"Zatím žádná zpráva.");d.appendChild(task);
+  if(s)d.appendChild(el("div","kv",fmtTime(s.time)+" (Praha) · "+agoText(s.time)));
+  var m=el("div","met");
+  [[c.done,"hotovo 12 h"],[c.stuck,"zasekl 12 h"],[usageText(r.usage)||"?","usage"]].forEach(function(x){var b=el("div");b.appendChild(el("b",null,String(x[0])));b.appendChild(el("small",null,x[1]));m.appendChild(b);});
+  d.appendChild(m);
+  if(safeLink(r.link)){var a=el("a","btn","Otevřít chat");a.href=r.link;d.appendChild(a);}
+  var rep=state.reports[n];
+  if(rep){var vb=el("button","btn rep","Zobrazit report");vb.title="Report z "+fmtTime(rep.time);vb.onclick=function(){showReport(n);};d.appendChild(vb);}
+  if(waitingReport(n))d.appendChild(el("div","wait","Čekám na report…"));
+  else{var rb=el("button","btn alt","Vyžádat podrobný report");rb.onclick=function(){rb.disabled=true;publishRequest(n);};d.appendChild(rb);}
+}
+function setConn(ok,txt){
+  var c=$("conn");c.className=ok?"ok":"bad";c.textContent=txt;
+  var c2=$("conn2");if(c2)c2.textContent=txt;
+  $("dotm").className=ok?"ok":"bad";
+}
+
+/* ================= 2D záloha ================= */
+function render2D(){
+  var g=groupFloors(),root=$("fb-floors");root.textContent="";
+  if(!g.order.length)root.appendChild(el("p","empty","Čekám na roster…"));
+  var needs=[];
+  g.order.forEach(function(f){
+    var fl=el("div","floor");fl.appendChild(el("h2",null,"Patro: "+f));
+    var ds=el("div","desks");
+    g.floors[f].forEach(function(n){
+      var r=state.roster[n]||{},s=state.bots[n],look=r.look||{};
+      var d=el("div","desk "+(s?s.ev:""));var top=el("div","top");
+      var av=el("div","av2",look.emoji||look.initial||n.charAt(0).toUpperCase());av.style.background=/^#[0-9a-f]{6}$/i.test(look.color||"")?look.color:"#6b7380";
+      var box=el("div");box.appendChild(el("div","nm",n+(r.lead?" ★":"")));box.appendChild(el("div","role",r.role||"nový bot"));
+      top.appendChild(av);top.appendChild(box);d.appendChild(top);
+      d.appendChild(el("span","st "+(s?s.ev:""),s?EVENTS[s.ev]:"Bez zprávy"));
+      if(s){d.appendChild(el("div","last",s.text));d.appendChild(el("div","when",fmtTime(s.time)+" (Praha)"));if(s.ev==="need")needs.push(n+": "+s.text);}
+      var meta=el("div","meta");meta.appendChild(el("span",null,usageText(r.usage)?"Usage: "+usageText(r.usage):""));
+      if(safeLink(r.link)){var a=el("a",null,"Otevřít chat");a.href=r.link;meta.appendChild(a);}
+      d.appendChild(meta);ds.appendChild(d);
+    });
+    fl.appendChild(ds);root.appendChild(fl);
+  });
+  var ban=$("banner");
+  if(needs.length){ban.style.display="block";ban.textContent="⚠️ Potřebují tě: "+needs.join(" | ");}else ban.style.display="none";
+  var feed=$("fb-feed");feed.textContent="";
+  if(!state.feed.length)feed.appendChild(el("p","empty","Zatím nic."));
+  state.feed.slice(0,60).forEach(function(p){var e=el("div","ev2");e.appendChild(el("div","when",fmtTime(p.time)+" · "+p.bot));e.appendChild(el("b",null,EVENTS[p.ev]));e.appendChild(document.createTextNode(" — "+p.text));feed.appendChild(e);});
+}
+var fbOn=false;
+function setFallback(on){fbOn=on;document.body.classList.toggle("fb",on);if(on)render2D();}
+
+/* ================= data ================= */
+function refresh(){renderUI();if(fbOn)render2D();}
+function ingest(m){var ch=apply(parseMsg(m));if(ch)refresh();}
+function backfill(){
+  return fetch(BASE+"/json?poll=1&since=12h").then(function(r){return r.text();}).then(function(t){
+    t.split("\n").forEach(function(l){if(!l.trim())return;try{apply(parseMsg(JSON.parse(l)));}catch(e){}});refresh();
+  }).catch(function(){setConn(false,"nelze načíst historii");});
+}
+function live(){
+  var es=new EventSource(BASE+"/sse");
+  es.onopen=function(){setConn(true,"živě připojeno");};
+  es.onmessage=function(e){try{ingest(JSON.parse(e.data));}catch(x){}};
+  es.onerror=function(){setConn(false,"spojení přerušeno, zkouším znovu…");};
+}
+
+/* ================= 3D scéna ================= */
+function init3D(THREE){
+  var canvas=$("gl"),bubbles=$("bubbles");
+  var renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true,powerPreference:"high-performance"});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.setClearColor(0x000000,0);
+  var scene=new THREE.Scene();
+  var camera=new THREE.OrthographicCamera(-10,10,10,-10,0.1,400);
+  var hemi=new THREE.HemisphereLight(0xffffff,0xd6dde8,1.05);scene.add(hemi);
+  var sun=new THREE.DirectionalLight(0xfff8ee,1.9);
+  sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.bias=-0.0006;sun.shadow.normalBias=0.04;sun.shadow.radius=4;
+  scene.add(sun);scene.add(sun.target);
+
+  var FW=26,H=5.4,WALLH=H-0.4,EL=35.264*Math.PI/180;
+  var C={white:0xffffff,slab:0xf7f8fa,tile:0xeceff4,frame:0x2b2f37,glass:0xbfe0f2,elev:0xe3e7ee,elevDoor:0xa4adba,sofa:0x9db4d3,rug:0xcfd9e6,pot:0xf1f1f1,leaf1:0x4cb36e,leaf2:0x5fc47f,leaf3:0x3d9a5c,trunk:0x8a6a4c,lap:0xd3d7de,scr:0x20242b};
+  var mats={};
+  function M(k,color,o){if(!mats[k])mats[k]=new THREE.MeshStandardMaterial(Object.assign({color:color,roughness:0.55,metalness:0.0},o||{}));return mats[k];}
+  var glassMat=new THREE.MeshStandardMaterial({color:C.glass,transparent:true,opacity:0.13,roughness:0.1,metalness:0.1,side:THREE.DoubleSide,depthWrite:false});
+  var geos={};
+  function G(k,f){if(!geos[k])geos[k]=f();return geos[k];}
+  function rrShape(w,d,r){
+    var s=new THREE.Shape(),x=-w/2,y=-d/2;r=Math.min(r,w/2,d/2);
+    s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.absarc(x+w-r,y+r,r,-Math.PI/2,0,false);
+    s.lineTo(x+w,y+d-r);s.absarc(x+w-r,y+d-r,r,0,Math.PI/2,false);
+    s.lineTo(x+r,y+d);s.absarc(x+r,y+d-r,r,Math.PI/2,Math.PI,false);
+    s.lineTo(x,y+r);s.absarc(x+r,y+r,r,Math.PI,Math.PI*1.5,false);return s;
+  }
+  function rbox(w,h,d,r){return G("rb"+w+"_"+h+"_"+d+"_"+r,function(){var g=new THREE.ExtrudeGeometry(rrShape(w,d,r),{depth:h,bevelEnabled:false,curveSegments:10});g.rotateX(-Math.PI/2);return g;});}
+  function box(w,h,d){return G("bx"+w+"_"+h+"_"+d,function(){return new THREE.BoxGeometry(w,h,d);});}
+  function mesh(geo,mat,x,y,z,cast,recv){var m=new THREE.Mesh(geo,mat);m.position.set(x||0,y||0,z||0);m.castShadow=cast!==false;m.receiveShadow=recv!==false;return m;}
+
+  function canvasTex(w,h,draw){var c=document.createElement("canvas");c.width=w;c.height=h;draw(c.getContext("2d"),w,h);var t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;}
+  var tileTex=canvasTex(128,128,function(x,w,h){x.fillStyle="#eef1f5";x.fillRect(0,0,w,h);x.strokeStyle="#dde2ea";x.lineWidth=3;x.strokeRect(0,0,w,h);});
+  tileTex.wrapS=tileTex.wrapT=THREE.RepeatWrapping;
+  var blobTex=canvasTex(128,128,function(x,w,h){var g=x.createRadialGradient(64,64,4,64,64,62);g.addColorStop(0,"rgba(30,40,60,.55)");g.addColorStop(1,"rgba(30,40,60,0)");x.fillStyle=g;x.fillRect(0,0,w,h);});
+  var badgeTex={};
+  function badge(kind){
+    if(badgeTex[kind])return badgeTex[kind];
+    var col={done:"#17a34a",need:"#f5b301",stuck:"#f5b301",error:"#ef4444",rest:"#94a3b8",working:"#34d058"}[kind];
+    return badgeTex[kind]=canvasTex(128,128,function(x){
+      x.fillStyle="#fff";x.beginPath();x.arc(64,64,60,0,7);x.fill();
+      x.fillStyle=col;x.beginPath();x.arc(64,64,52,0,7);x.fill();
+      x.strokeStyle="#fff";x.fillStyle="#fff";x.lineWidth=13;x.lineCap="round";x.lineJoin="round";
+      if(kind==="done"){x.beginPath();x.moveTo(38,66);x.lineTo(56,84);x.lineTo(90,46);x.stroke();}
+      else if(kind==="need"||kind==="stuck"){x.beginPath();x.moveTo(64,34);x.lineTo(64,70);x.stroke();x.beginPath();x.arc(64,90,7,0,7);x.fill();}
+      else if(kind==="error"){x.beginPath();x.moveTo(42,42);x.lineTo(86,86);x.moveTo(86,42);x.lineTo(42,86);x.stroke();}
+      else if(kind==="rest"){x.font="bold 64px Arial,sans-serif";x.textAlign="center";x.textBaseline="middle";x.fillText("z",64,68);}
+      else{[40,64,88].forEach(function(px){x.beginPath();x.arc(px,66,8,0,7);x.fill();});}
+    });
+  }
+  function labelTex(text){
+    return canvasTex(512,96,function(x,w,h){x.clearRect(0,0,w,h);x.fillStyle="#2b2f37";x.font="700 54px system-ui,Arial,sans-serif";x.textAlign="center";x.textBaseline="middle";x.fillText(text,w/2,h/2+3,w-30);});
+  }
+
+  /* --- boti --- */
+  function botGeo(){return G("bot",function(){
+    var r=0.62,pts=[],i;pts.push(new THREE.Vector2(0,0));
+    for(i=0;i<=5;i++){var a=i/5*Math.PI/2;pts.push(new THREE.Vector2(r-0.1+Math.sin(a)*0.1,0.1-Math.cos(a)*0.1));}
+    pts.push(new THREE.Vector2(r,0.7));
+    for(i=1;i<=18;i++){var b=i/18*Math.PI/2;pts.push(new THREE.Vector2(Math.cos(b)*r,0.7+Math.sin(b)*r));}
+    pts[pts.length-1].x=0;
+    return new THREE.LatheGeometry(pts,40);
+  });}
+  var eyeGeo=new THREE.SphereGeometry(0.095,16,12);
+  var eyeMat=new THREE.MeshStandardMaterial({color:0x0b0d12,roughness:0.3});
+  var ringGeo=new THREE.RingGeometry(0.72,0.88,48);ringGeo.rotateX(-Math.PI/2);
+  var blobGeo=new THREE.PlaneGeometry(2.2,2.2);blobGeo.rotateX(-Math.PI/2);
+  var GRAY=new THREE.Color(0xb8bfca);
+
+  var building=null,floorsInfo=[],bots={},known={},firstBuild=true,lastSig="",disposables=[];
+  var cam={x:0,y:0,z:0,yaw:Math.PI/4,zoom:1};
+  var goal={x:0,y:0,z:0,yaw:Math.PI/4,zoom:1};
+  var snap=true;
+
+  function clearBuilding(){
+    if(building){scene.remove(building);}
+    disposables.forEach(function(d){d.dispose();});disposables=[];
+    bubbles.textContent="";bots={};floorsInfo=[];
+  }
+
+  function buildFloor(name,names,idx,total){
+    var rows=Math.max(2,Math.ceil(names.length/4)),D=Math.max(15,4.4*rows+6);
+    var y0=(total-1-idx)*H;
+    var g=new THREE.Group();g.position.y=y0;
+    var info={name:name,idx:idx,y:y0,D:D,group:g,bots:[]};
+    // deska
+    var slabMats=[M("slabs",C.white),M("slabs",C.white),new THREE.MeshStandardMaterial({color:0xffffff,map:tileTex,roughness:0.7}),M("slabs",C.white),M("slabs",C.white),M("slabs",C.white)];
+    var tm=new THREE.MeshStandardMaterial({color:0xffffff,map:tileTex.clone(),roughness:0.75});tm.map.needsUpdate=true;tm.map.repeat.set(FW/1.5,D/1.5);tm.map.wrapS=tm.map.wrapT=THREE.RepeatWrapping;disposables.push(tm,tm.map);
+    slabMats[2]=tm;
+    var slab=new THREE.Mesh(box(FW+0.8,0.4,D+0.8),slabMats);slab.position.y=-0.2;slab.receiveShadow=true;slab.castShadow=true;g.add(slab);
+    // popisek patra na bocích
+    var lt=labelTex(name);disposables.push(lt);
+    var lm=new THREE.MeshBasicMaterial({map:lt,transparent:true});disposables.push(lm);
+    var lg=new THREE.PlaneGeometry(6,1.125);disposables.push(lg);
+    [[0,D/2+0.41,0],[Math.PI/2,FW/2+0.41,1],[Math.PI,-D/2-0.41,0],[-Math.PI/2,-FW/2-0.41,1]].forEach(function(s){
+      var p=new THREE.Mesh(lg,lm);p.position.y=-0.2;
+      if(s[2]===0){p.position.z=s[1];p.rotation.y=s[0];}else{p.position.x=s[1];p.rotation.y=s[0];}
+      g.add(p);
+    });
+    // skleněné stěny
+    var fm=M("frame",C.frame,{roughness:0.5,metalness:0.3});
+    function wall(len,horizontalX,fixed){ // horizontalX: stěna podél osy x
+      var gl=new THREE.Mesh(box(len,WALLH,0.04),glassMat);gl.position.y=WALLH/2;gl.castShadow=false;gl.receiveShadow=false;
+      var w=new THREE.Group();w.add(gl);
+      var n=Math.round(len/4.3),i;
+      for(i=0;i<=n;i++){w.add(mesh(box(0.11,WALLH,0.11),fm,-len/2+len*i/n,WALLH/2,0,false,false));}
+      w.add(mesh(box(len,0.16,0.13),fm,0,0.08,0,false,false));
+      w.add(mesh(box(len,0.16,0.13),fm,0,WALLH-0.08,0,false,false));
+      if(horizontalX){w.position.z=fixed;}else{w.rotation.y=Math.PI/2;w.position.x=fixed;}
+      g.add(w);
+    }
+    wall(FW,true,D/2);wall(FW,true,-D/2);wall(D,false,FW/2);wall(D,false,-FW/2);
+    // výtah vpravo vzadu
+    var ex=FW/2-2.3,ez=-D/2+2.4;
+    g.add(mesh(box(3.4,WALLH,3.6),M("elev",C.elev),ex,WALLH/2,ez));
+    var dm=M("elevd",C.elevDoor,{metalness:0.35,roughness:0.4});
+    g.add(mesh(box(1.3,3.2,0.06),dm,ex-0.7,1.6,ez+1.83,false));g.add(mesh(box(1.3,3.2,0.06),dm,ex+0.7,1.6,ez+1.83,false));
+    g.add(mesh(box(0.06,3.2,1.3),dm,ex+1.73,1.6,ez-0.7,false));g.add(mesh(box(0.06,3.2,1.3),dm,ex+1.73,1.6,ez+0.7,false));
+    g.add(mesh(box(0.25,0.5,0.06),M("elbtn",0x3b4350),ex+1.9,1.4,ez+1.85,false));
+    // dlaždice u výtahu: ukazatel patra
+    // bílá tabule
+    var wbx=6.4,wbz=-D/2+0.9;
+    var wb=new THREE.Group();wb.position.set(wbx,0,wbz);
+    wb.add(mesh(box(3.8,2.3,0.12),M("wbf",0xcfd4dc),0,2.1,0));
+    wb.add(mesh(box(3.55,2.05,0.06),M("wbb",0xffffff,{roughness:0.25}),0,2.1,0.07,false));
+    [[-1.2,2.7,1.1,0x3b82f6],[-1.0,2.35,1.6,0x34d058],[-1.1,2.0,0.9,0xf5b301],[0.6,2.65,0.8,0xef4444],[0.4,2.25,1.4,0x3b82f6]].forEach(function(s){wb.add(mesh(box(s[2],0.07,0.02),M("wl"+s[3],s[3]),s[0]+0.9,s[1],0.11,false,false));});
+    wb.add(mesh(box(0.1,1.4,0.1),M("wbf",0xcfd4dc),-1.5,0.7,-0.05));wb.add(mesh(box(0.1,1.4,0.1),M("wbf",0xcfd4dc),1.5,0.7,-0.05));
+    g.add(wb);
+    // stromy
+    function tree(x,z,s){
+      var t=new THREE.Group();t.position.set(x,0,z);t.scale.setScalar(s||1);
+      t.add(mesh(G("pot",function(){return new THREE.CylinderGeometry(0.55,0.42,0.8,24);}),M("pot",C.pot),0,0.4,0));
+      t.add(mesh(G("trunk",function(){return new THREE.CylinderGeometry(0.1,0.14,1.2,10);}),M("trunk",C.trunk),0,1.3,0));
+      t.add(mesh(G("lf1",function(){return new THREE.IcosahedronGeometry(0.85,2);}),M("lf1",C.leaf1),0,2.0,0));
+      t.add(mesh(G("lf2",function(){return new THREE.IcosahedronGeometry(0.62,2);}),M("lf2",C.leaf2),0.35,2.65,0.1));
+      t.add(mesh(G("lf3",function(){return new THREE.IcosahedronGeometry(0.55,2);}),M("lf3",C.leaf3),-0.4,2.5,-0.15));
+      g.add(t);
+    }
+    tree(-FW/2+1.3,-D/2+1.3,1.1);tree(-FW/2+1.2,D/2-1.2,0.95);tree(FW/2-1.3,D/2-1.2,1.1);tree(FW/2-1.2,-D/2+5.4,0.85);
+    // lounge
+    var lz=Math.max(2.5,D/2-5);
+    var rug=mesh(G("rug",function(){return new THREE.CylinderGeometry(2.7,2.7,0.04,48);}),M("rug",C.rug),FW/2-4.4,0.02,lz,false);rug.scale.set(1,1,0.9);g.add(rug);
+    var sofa=new THREE.Group();sofa.position.set(FW/2-1.2,0,lz);sofa.rotation.y=-Math.PI/2;
+    var sm=M("sofa",C.sofa,{roughness:0.8});
+    sofa.add(mesh(rbox(4.4,0.65,1.6,0.3),sm,0,0.12,0));sofa.add(mesh(rbox(4.4,1.0,0.55,0.25),sm,0,0.12,-0.58));
+    sofa.add(mesh(rbox(0.55,0.95,1.6,0.25),sm,-2.0,0.12,0));sofa.add(mesh(rbox(0.55,0.95,1.6,0.25),sm,2.0,0.12,0));
+    sofa.add(mesh(rbox(1.2,0.5,0.4,0.15),M("cush",0xffffff,{roughness:0.9}),-1.0,0.77,0.0));
+    g.add(sofa);
+    g.add(mesh(G("ct",function(){return new THREE.CylinderGeometry(0.85,0.85,0.12,36);}),M("white",C.white),FW/2-4.7,0.75,lz));
+    g.add(mesh(G("ctl",function(){return new THREE.CylinderGeometry(0.12,0.12,0.7,12);}),M("white",C.white),FW/2-4.7,0.38,lz));
+    g.add(mesh(G("mug",function(){return new THREE.CylinderGeometry(0.14,0.12,0.2,16);}),M("mug",0xf59e0b),FW/2-4.5,0.91,lz+0.2));
+    g.add(mesh(G("pouf",function(){return new THREE.CylinderGeometry(0.5,0.5,0.55,28);}),M("pouf",0xffffff),FW/2-5.0,0.3,lz+2.2));
+    // stoly a boti
+    names.forEach(function(n,i){
+      var col=i%4,row=Math.floor(i/4);
+      var bx=-9.6+col*4.0,bz=-D/2+3.4+row*4.4;
+      buildDesk(g,info,n,i,bx,bz);
+    });
+    building.add(g);
+    floorsInfo.push(info);
+  }
+
+  function buildDesk(g,info,n,i,bx,bz){
+    var white=M("white",C.white,{roughness:0.35});
+    var dz=bz+1.55;
+    g.add(mesh(rbox(3.2,0.14,1.4,0.38),white,bx,1.0,dz));
+    g.add(mesh(box(0.1,1.0,1.0),white,bx-1.45,0.5,dz));g.add(mesh(box(0.1,1.0,1.0),white,bx+1.45,0.5,dz));
+    // notebook
+    var lg=new THREE.Group();lg.position.set(bx,1.14,dz-0.05);
+    lg.add(mesh(box(0.95,0.05,0.64),M("lapb",C.lap,{metalness:0.5,roughness:0.35}),0,0.025,0,true,false));
+    var piv=new THREE.Group();piv.position.set(0,0.05,0.3);piv.rotation.x=0.32;
+    var scrMat=new THREE.MeshStandardMaterial({color:0x20242b,emissive:0x000000,emissiveIntensity:0.9,roughness:0.4});disposables.push(scrMat);
+    var dark=M("lapd",C.scr,{roughness:0.5});
+    var sc=new THREE.Mesh(box(0.95,0.6,0.04),[dark,dark,dark,dark,dark,scrMat]);sc.position.y=0.3;sc.castShadow=true;piv.add(sc);
+    lg.add(piv);g.add(lg);
+    // stolička
+    g.add(mesh(G("stool",function(){return new THREE.CylinderGeometry(0.44,0.4,0.16,28);}),white,bx,0.62,bz));
+    g.add(mesh(G("stoolp",function(){return new THREE.CylinderGeometry(0.09,0.09,0.55,12);}),M("alu",0xc9cfd8,{metalness:0.6}),bx,0.3,bz));
+    g.add(mesh(G("stoolb",function(){return new THREE.CylinderGeometry(0.42,0.46,0.06,28);}),white,bx,0.03,bz));
+    // bot
+    var r=state.roster[n]||{},look=r.look||{};
+    var base=new THREE.Color(/^#[0-9a-f]{6}$/i.test(look.color||"")?look.color:"#8b94a3");
+    var bg=new THREE.Group();bg.position.set(bx,0.7,bz);
+    var bodyMat=new THREE.MeshStandardMaterial({color:base.clone(),roughness:0.42,metalness:0.0});disposables.push(bodyMat);
+    var body=new THREE.Mesh(botGeo(),bodyMat);body.castShadow=true;body.receiveShadow=true;body.userData.bot=n;
+    var bodyG=new THREE.Group();bodyG.add(body);
+    var eL=new THREE.Mesh(eyeGeo,eyeMat),eR=new THREE.Mesh(eyeGeo,eyeMat);
+    eL.position.set(-0.2,0.88,0.56);eR.position.set(0.2,0.88,0.56);eL.scale.z=eR.scale.z=0.55;
+    bodyG.add(eL);bodyG.add(eR);
+    var bs=new THREE.Sprite(new THREE.SpriteMaterial({map:badge("rest"),transparent:true,depthTest:true}));disposables.push(bs.material);
+    bs.scale.set(0.62,0.62,1);bs.position.set(0.55,1.75,0);bs.renderOrder=10;
+    bg.add(bodyG);bg.add(bs);
+    // kruh stavu a stín na podlaze
+    var ringMat=new THREE.MeshBasicMaterial({color:0x94a3b8,transparent:true,opacity:0.8,depthWrite:false});disposables.push(ringMat);
+    var ring=new THREE.Mesh(ringGeo,ringMat);ring.position.set(bx,0.07,bz);g.add(ring);
+    var blobMat=new THREE.MeshBasicMaterial({map:blobTex,transparent:true,depthWrite:false,opacity:0.75});disposables.push(blobMat);
+    var blob=new THREE.Mesh(blobGeo,blobMat);blob.position.set(bx,0.05,bz);g.add(blob);
+    g.add(bg);
+    // bublina
+    var bub=document.createElement("div");bub.className="bub";var bn=document.createElement("b"),bt=document.createElement("span");
+    bub.appendChild(bn);bub.appendChild(bt);bubbles.appendChild(bub);
+    bub.onclick=function(ev){ev.stopPropagation();selectBot(n);};
+    var o={name:n,floor:info,g:bg,bodyG:bodyG,body:body,bodyMat:bodyMat,base:base,eL:eL,eR:eR,badge:bs,ringMat:ringMat,ring:ring,scrMat:scrMat,
+      bub:bub,bn:bn,bt:bt,bx:bx,bz:bz,y:info.y+0.7,ph:Math.random()*6.28,blinkAt:1+Math.random()*4,blinkEnd:0,dim:0,st:"",
+      born:(known[n]||firstBuild)?-1:performance.now()/1000,tag:null};
+    known[n]=1;
+    bots[n]=o;info.bots.push(o);
+    layoutInfo[n]={floor:info.name,desk:i+1};
+  }
+
+  function floorOf(name){for(var i=0;i<floorsInfo.length;i++)if(floorsInfo[i].name===name)return floorsInfo[i];return null;}
+
+  function updateStatuses(){
+    Object.keys(bots).forEach(function(n){
+      var o=bots[n],st=statusOf(n),s=state.bots[n],color=new THREE.Color(ST[st].c);
+      o.st=st;
+      o.ringMat.color.copy(color);o.ringMat.opacity=st==="rest"?0.35:0.85;
+      o.scrMat.emissive.copy(st==="rest"?new THREE.Color(0x000000):color);o.scrMat.emissiveIntensity=st==="working"?0.8:0.45;
+      o.badge.material.map=badge(st);o.badge.material.needsUpdate=true;o.badge.visible=true;
+      o.bn.textContent=n;
+      var txt=s?s.text:"Zatím žádná zpráva";
+      o.bt.textContent=(st==="rest"?"💤 ":st==="done"?"✓ ":"")+txt;
+      o.bub.className="bub "+st+(sel.bot===n?" sel":"");
+      o.bub.style.borderColor=ST[st].c;
+      var tag=o.bub.querySelector("i");
+      if(state.reports[n]){if(!tag){tag=document.createElement("i");tag.textContent="Report";o.bub.appendChild(tag);}}else if(tag)tag.remove();
+    });
+  }
+
+  function sync(g){
+    var sig=g.order.map(function(f){return f+":"+g.floors[f].join("|");}).join("#");
+    if(sig!==lastSig){
+      lastSig=sig;
+      clearBuilding();
+      building=new THREE.Group();scene.add(building);
+      var list=g.order.length?g.order:["Čekám na roster"];
+      list.forEach(function(f,i){buildFloor(f,g.floors[f]||[],i,list.length);});
+      // ground shadow
+      var gr=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.ShadowMaterial({opacity:0.16}));disposables.push(gr.geometry,gr.material);
+      gr.rotation.x=-Math.PI/2;gr.position.y=-0.42;gr.receiveShadow=true;building.add(gr);
+      var th=list.length*H;
+      sun.position.set(-18,th/2+46,26);sun.target.position.set(0,th/2,0);
+      var sc=sun.shadow.camera;sc.left=-34;sc.right=34;sc.top=34;sc.bottom=-34;sc.near=1;sc.far=150;sc.updateProjectionMatrix();
+      firstBuild=false;
+      layoutAfterBuild();
+    }
+    updateStatuses();
+  }
+  var pendingSnap=true;
+  function layoutAfterBuild(){focus(pendingSnap);pendingSnap=false;}
+
+  function focus(snapNow){
+    var f=floorOf(sel.floor)||floorsInfo[0];if(!f)return;
+    var o=sel.bot&&bots[sel.bot];
+    if(o){goal.x=o.bx;goal.z=o.bz;goal.y=o.y+0.9;goal.zoom=1.7;}
+    else{goal.x=0;goal.z=0;goal.y=f.y+1.0;goal.zoom=1;}
+    if(snapNow)snap=true;
+  }
+  function rotate(dir){goal.yaw+=dir*Math.PI/2;}
+  function zoomBy(k){goal.zoom=Math.max(0.5,Math.min(5,goal.zoom*k));}
+
+  /* --- vstup --- */
+  var ptrs={},down=null,pinch=0;
+  function ppu(){
+    var w=window.innerWidth,narrow=w<700;
+    return Math.max(12,Math.min(52,(narrow?w:w-600)/(FW+2)));
+  }
+  canvas.addEventListener("pointerdown",function(e){
+    canvas.setPointerCapture(e.pointerId);ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
+    var ids=Object.keys(ptrs);
+    if(ids.length===1)down={x:e.clientX,y:e.clientY,moved:0};
+    else{down=null;var a=ptrs[ids[0]],b=ptrs[ids[1]];pinch=Math.hypot(a.x-b.x,a.y-b.y);}
+  });
+  function panBy(dx,dy){
+    var p=ppu()*cam.zoom,sy=Math.sin(EL);
+    var rx=Math.cos(goal.yaw),rz=-Math.sin(goal.yaw),fx=-Math.sin(goal.yaw),fz=-Math.cos(goal.yaw);
+    var mx=-rx*dx/p+fx*dy/(p*sy),mz=-rz*dx/p+fz*dy/(p*sy);
+    var lim=FW/2+6;
+    goal.x=Math.max(-lim,Math.min(lim,goal.x+mx));goal.z=Math.max(-lim,Math.min(lim,goal.z+mz));
+    cam.x=goal.x;cam.z=goal.z;
+  }
+  canvas.addEventListener("pointermove",function(e){
+    var p=ptrs[e.pointerId];
+    if(!p){hoverReq={x:e.clientX,y:e.clientY};return;}
+    var dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
+    var ids=Object.keys(ptrs);
+    if(ids.length===1){if(down)down.moved+=Math.abs(dx)+Math.abs(dy);panBy(dx,dy);}
+    else if(ids.length>=2){
+      var a=ptrs[ids[0]],b=ptrs[ids[1]],d=Math.hypot(a.x-b.x,a.y-b.y);
+      if(pinch>0){zoomBy(d/pinch);cam.zoom=goal.zoom;}pinch=d;panBy(dx/2,dy/2);
+    }
+  });
+  function up(e){
+    var had=ptrs[e.pointerId];delete ptrs[e.pointerId];
+    if(Object.keys(ptrs).length<2)pinch=0;
+    if(had&&down&&e.type==="pointerup"&&down.moved<6){var n=pick(e.clientX,e.clientY);if(n)selectBot(n);else if(sel.bot)deselect();}
+    if(!Object.keys(ptrs).length)down=null;
+  }
+  canvas.addEventListener("pointerup",up);canvas.addEventListener("pointercancel",up);
+  canvas.addEventListener("wheel",function(e){e.preventDefault();zoomBy(Math.exp(-e.deltaY*0.0014));},{passive:false});
+  var ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),hoverReq=null;
+  function pick(cx,cy){
+    var f=floorOf(sel.floor);if(!f)return null;
+    var r=canvas.getBoundingClientRect();ndc.set((cx-r.left)/r.width*2-1,-((cy-r.top)/r.height)*2+1);
+    ray.setFromCamera(ndc,camera);
+    var hits=ray.intersectObjects(f.bots.map(function(b){return b.body;}),false);
+    return hits.length?hits[0].object.userData.bot:null;
+  }
+  window.addEventListener("keydown",function(e){
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    var k=e.key;
+    if($("modal").className==="on"){if(k==="Escape")closeModal();return;}
+    if(k==="q"||k==="Q")rotate(-1);else if(k==="e"||k==="E")rotate(1);
+    else if(k==="Escape")deselect();
+    else if(k==="+"||k==="=")zoomBy(1.25);else if(k==="-")zoomBy(0.8);
+    else if(k==="ArrowUp"||k==="ArrowDown"){
+      var g=groupFloors(),i=g.order.indexOf(sel.floor),j=i+(k==="ArrowUp"?-1:1);
+      if(j>=0&&j<g.order.length){e.preventDefault();selectFloor(g.order[j]);}
+    }
+  });
+  $("b-l").onclick=function(){rotate(-1);};$("b-r").onclick=function(){rotate(1);};
+  $("b-p").onclick=function(){zoomBy(1.3);};$("b-m").onclick=function(){zoomBy(1/1.3);};
+  $("b-h").onclick=function(){sel.bot=null;renderUI();focus();};
+
+  /* --- smyčka --- */
+  var clock=performance.now(),tmp=new THREE.Vector3(),W=0,Hh=0;
+  function resize(){
+    W=window.innerWidth;Hh=window.innerHeight;renderer.setSize(W,Hh,false);
+  }
+  window.addEventListener("resize",resize);resize();
+  var shiftY=0;
+  function frame(now){
+    requestAnimationFrame(frame);
+    var dt=Math.min(0.1,(now-clock)/1000);clock=now;var t=now/1000;
+    var k=snap?1:1-Math.exp(-dt*6);
+    cam.x+=(goal.x-cam.x)*k;cam.y+=(goal.y-cam.y)*k;cam.z+=(goal.z-cam.z)*k;cam.yaw+=(goal.yaw-cam.yaw)*k;
+    cam.zoom*=Math.pow(goal.zoom/cam.zoom,k);
+    snap=false;
+    var narrow=W<700,p=ppu()*cam.zoom;
+    var sy=0;if(narrow){var rr=$("right");sy=-(rr.offsetHeight/2);if(sel.bot)sy+=($("detail").offsetHeight/2);}
+    var hw=W/2/p,hh=Hh/2/p,cy=sy/p;
+    camera.left=-hw;camera.right=hw;camera.top=hh+cy;camera.bottom=-hh+cy;
+    camera.updateProjectionMatrix();
+    var d=100,ce=Math.cos(EL);
+    camera.position.set(cam.x+Math.sin(cam.yaw)*ce*d,cam.y+Math.sin(EL)*d,cam.z+Math.cos(cam.yaw)*ce*d);
+    camera.lookAt(cam.x,cam.y,cam.z);camera.updateMatrixWorld();
+    // viditelnost pater
+    floorsInfo.forEach(function(f){f.group.visible=f.y<=cam.y+0.2;});
+    // boti
+    var fcur=floorOf(sel.floor);
+    Object.keys(bots).forEach(function(n){
+      var o=bots[n],st=o.st||"rest",bob=0,sx=1,syy=1,jump=0;
+      var spd=st==="working"?6:st==="rest"?0.9:st==="done"?2.2:1.4;
+      var amp=st==="working"?0.07:st==="rest"?0.02:0.04;
+      var ph=t*spd+o.ph;bob=Math.sin(ph)*amp;
+      if(st==="need"||st==="stuck"||st==="error"){var c=Math.abs(Math.sin(t*(st==="need"?4.2:3.2)+o.ph));jump=c*0.5;syy=1+(0.5-c)*0.08;sx=1/Math.sqrt(syy);}
+      else{syy=1+Math.sin(ph)*amp*0.5;sx=1/Math.sqrt(syy);}
+      if(st==="rest"){syy*=0.93;}
+      o.bodyG.position.y=bob+jump;o.bodyG.scale.set(sx,syy,sx);
+      var spawn=1;if(o.born>0){var a=Math.min(1,(t-o.born)/0.7);spawn=1+1.70158*Math.pow(a-1,3)+1.70158*Math.pow(a-1,2);if(a<=0)spawn=0.001;if(a>=1)o.born=-1;}
+      o.g.scale.setScalar(Math.max(0.001,spawn));
+      o.g.rotation.y=cam.yaw;
+      // mrkání
+      var closed=st==="rest";
+      if(t>o.blinkAt){o.blinkEnd=t+0.14;o.blinkAt=t+2+Math.random()*4.5;}
+      if(t<o.blinkEnd)closed=true;
+      var es=closed?0.1:1;o.eL.scale.y+=(es-o.eL.scale.y)*0.5;o.eR.scale.y=o.eL.scale.y;
+      // ztlumení
+      var dt2=st==="rest"?1:0;o.dim+=(dt2-o.dim)*0.08;
+      o.bodyMat.color.copy(o.base).lerp(GRAY,o.dim*0.55);
+      // kruh
+      var pulse=(st==="need"||o.name===sel.bot)?1+0.12*Math.sin(t*5):1;o.ring.scale.set(pulse,1,pulse);
+      o.badge.position.y=1.75+bob+jump;o.badge.visible=(o.floor===fcur);
+      var op=1;o.badge.material.opacity=op;
+    });
+    renderer.render(scene,camera);
+    // bubliny
+    var maxW=Math.max(84,Math.min(170,p*3.7));
+    Object.keys(bots).forEach(function(n){
+      var o=bots[n],vis=fcur&&o.floor===fcur&&o.floor.group.visible&&Math.abs(cam.y-o.floor.y-1)<4;
+      if(!vis){if(o.bub.style.display!=="none")o.bub.style.display="none";return;}
+      tmp.set(o.bx,o.y+1.9*o.g.scale.x+o.bodyG.position.y,o.bz).project(camera);
+      var px=(tmp.x*0.5+0.5)*W,py=(-tmp.y*0.5+0.5)*Hh;
+      var s=o.bub.style;s.display="block";s.maxWidth=(sel.bot===n?230:maxW)+"px";
+      s.transform="translate("+Math.round(px)+"px,"+Math.round(py-8)+"px) translate(-50%,-100%)";
+      s.left="0";s.top="0";s.zIndex=sel.bot===n?"9":String(Math.round(py)>>3);
+    });
+    if(hoverReq){canvas.style.cursor=pick(hoverReq.x,hoverReq.y)?"pointer":"grab";hoverReq=null;}
+  }
+  requestAnimationFrame(frame);
+  $("loading").style.display="none";
+  scene3d={sync:sync,focus:function(){focus();}};
+  window.__office={THREE:THREE,renderer:renderer,state:state};
+  setFallback(false);
+  renderUI();
+  setInterval(function(){renderUI();},30000);
+}
+
+/* ================= start ================= */
+$("mclose").onclick=closeModal;$("modal").onclick=function(e){if(e.target===$("modal"))closeModal();};
+var webglOk=(function(){try{var c=document.createElement("canvas");return !!(c.getContext("webgl2")||c.getContext("webgl"));}catch(e){return false;}})();
+var fbTimer=setTimeout(function(){if(!scene3d)setFallback(true);},12000);
+if(!webglOk){clearTimeout(fbTimer);setFallback(true);}
+else{
+  import(THREE_URL).then(function(mod){clearTimeout(fbTimer);init3D(mod);}).catch(function(){setFallback(true);});
+}
+renderUI();
+backfill().then(live);
+})();
+</script>
+<script>
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
+</script>
+</body>
+</html>
