@@ -1,6 +1,6 @@
 // Service worker: cachuje jen shell (nikdy ntfy). Síť má přednost, cache je záloha pro offline.
-const CACHE = "kancelar-shell-v1";
-const SHELL = ["./", "index.html", "manifest.json", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
+const CACHE = "kancelar-shell-v2";
+const SHELL = ["./", "index.html", "manifest.json", "icon-192.png", "icon-512.png", "apple-touch-icon.png", "avatars/hyperion.svg", "avatars/valora.svg", "avatars/chimera.svg"];
 const THREE = "https://unpkg.com/three@0.160.0/build/three.module.js";
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

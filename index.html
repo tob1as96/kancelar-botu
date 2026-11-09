@@ -461,7 +461,7 @@ function renderUI(){
     names.forEach(function(n){
       var r=state.roster[n]||{},look=r.look||{},s=state.bots[n],st=statusOf(n);
       var row=el("div","rb"+(n===sel.bot?" on":""));
-      var av=el("div","av",look.emoji||look.initial||n.charAt(0).toUpperCase());av.style.background=/^#[0-9a-f]{6}$/i.test(look.color||"")?look.color:"#6b7380";av.style.setProperty("--sc",ST[st].c);
+      var av=el("div","av","");av.style.background=/^#[0-9a-f]{6}$/i.test(look.color||"")?look.color:"#6b7380";av.style.setProperty("--sc",ST[st].c);if(look.avatar){var im=document.createElement("img");im.src=look.avatar;im.alt="";im.style.cssText="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block";av.appendChild(im);}else{av.textContent=look.emoji||look.initial||n.charAt(0).toUpperCase();}
       var tx=el("div","tx"),nm=el("div","nm",n);
       if(state.reports[n])nm.appendChild(el("span","badge","Report"));
       tx.appendChild(nm);
@@ -482,7 +482,7 @@ function renderDetail(){
   var r=state.roster[n]||{},look=r.look||{},s=state.bots[n],st=statusOf(n),c=state.counts[n]||{done:0,stuck:0,start:0,need:0};
   var li=layoutInfo[n]||{};
   var hd=el("div","hd");
-  var av=el("div","av",look.emoji||look.initial||n.charAt(0).toUpperCase());av.style.background=/^#[0-9a-f]{6}$/i.test(look.color||"")?look.color:"#6b7380";av.style.setProperty("--sc",ST[st].c);
+  var av=el("div","av","");av.style.background=/^#[0-9a-f]{6}$/i.test(look.color||"")?look.color:"#6b7380";av.style.setProperty("--sc",ST[st].c);if(look.avatar){var im=document.createElement("img");im.src=look.avatar;im.alt="";im.style.cssText="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block";av.appendChild(im);}else{av.textContent=look.emoji||look.initial||n.charAt(0).toUpperCase();}
   var t=el("div");var h=el("h3",null,n+(r.lead?" ★":""));t.appendChild(h);
   var chip=el("span","chip",ST[st].l);chip.style.setProperty("--sc",ST[st].c);t.appendChild(chip);
   var x=el("button","x","✕");x.title="Zavřít";x.onclick=deselect;
@@ -519,7 +519,7 @@ function render2D(){
     g.floors[f].forEach(function(n){
       var r=state.roster[n]||{},s=state.bots[n],look=r.look||{};
       var d=el("div","desk "+(s?s.ev:""));var top=el("div","top");
-      var av=el("div","av2",look.emoji||look.initial||n.charAt(0).toUpperCase());av.style.background=/^#[0-9a-f]{6}$/i.test(look.color||"")?look.color:"#6b7380";
+      var av=el("div","av2","");av.style.background=/^#[0-9a-f]{6}$/i.test(look.color||"")?look.color:"#6b7380";if(look.avatar){var im=document.createElement("img");im.src=look.avatar;im.alt="";im.style.cssText="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block";av.appendChild(im);}else{av.textContent=look.emoji||look.initial||n.charAt(0).toUpperCase();}
       var box=el("div");box.appendChild(el("div","nm",n+(r.lead?" ★":"")));box.appendChild(el("div","role",r.role||"nový bot"));
       top.appendChild(av);top.appendChild(box);d.appendChild(top);
       d.appendChild(el("span","st "+(s?s.ev:""),s?EVENTS[s.ev]:"Bez zprávy"));
